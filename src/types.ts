@@ -16,6 +16,8 @@ export interface Task {
   attachedAudio?: string;
   attachedAudioName?: string;
   attachedLink?: string;
+  width?: number; // Optional custom width for expandable/scalable notes
+  height?: number; // Optional custom height for photo/audio/scalable notes
 }
 
 export interface DrawPoint {
@@ -59,4 +61,5 @@ export interface RopeConstraint {
   nodeBId: string;
   restLength: number;
   stiffness: number;
+  createdAt?: number;
 }

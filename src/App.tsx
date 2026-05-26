@@ -34,7 +34,9 @@ import {
   HelpCircle,
   X,
   Database,
-  CalendarDays
+  CalendarDays,
+  Image,
+  Music
 } from 'lucide-react';
 
 import { db, auth, handleFirestoreError, OperationType } from './lib/firebase';
@@ -67,6 +69,7 @@ export default function App() {
 
   // Connection Linking Anchor state
   const [linkingSourceId, setLinkingSourceId] = useState<string | null>(null);
+  const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
 
   // Link Rope Drag States
   const [draggingLinkSourceId, setDraggingLinkSourceId] = useState<string | null>(null);
@@ -85,6 +88,9 @@ export default function App() {
   const startPanPosRef = useRef({ x: 0, y: 0 });
   const localStrokesRef = useRef<Stroke[]>([]);
   const drawingSyncTimerRef = useRef<number | null>(null);
+  
+  const directPhotoInputRef = useRef<HTMLInputElement>(null);
+  const directAudioInputRef = useRef<HTMLInputElement>(null);
 
   // Keeps local strokes ref updated for debouncing
   useEffect(() => {
@@ -375,6 +381,93 @@ export default function App() {
     zoom
   });
 
+  const handleDirectPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        if (typeof reader.result === 'string') {
+          const nextId = 'task_' + Math.floor(Math.random() * 10000000);
+          const activeCenterX = (window.innerWidth / 2 - panX) / zoom;
+          const activeCenterY = (window.innerHeight / 2 - panY) / zoom;
+
+          const newTask: Task = {
+            id: nextId,
+            userId: user?.uid || 'guest',
+            title: 'Фотокарточка',
+            description: '',
+            status: 'pending',
+            priority: 'medium',
+            color: 'Cyber Grape',
+            posX: activeCenterX + (Math.random() * 80 - 40),
+            posY: activeCenterY + (Math.random() * 80 - 40),
+            pinned: false,
+            attachedImage: reader.result,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+
+          const nextTasks = [...tasks, newTask];
+          await saveTasks(nextTasks);
+
+          if (user) {
+            const taskPath = `users/${user.uid}/tasks`;
+            try {
+              await setDoc(doc(db, taskPath, nextId), newTask);
+            } catch (err) {
+              handleFirestoreError(err, OperationType.CREATE, taskPath);
+            }
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDirectAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        if (typeof reader.result === 'string') {
+          const nextId = 'task_' + Math.floor(Math.random() * 10000000);
+          const activeCenterX = (window.innerWidth / 2 - panX) / zoom;
+          const activeCenterY = (window.innerHeight / 2 - panY) / zoom;
+
+          const newTask: Task = {
+            id: nextId,
+            userId: user?.uid || 'guest',
+            title: 'Музыкальная пауза',
+            description: '',
+            status: 'pending',
+            priority: 'medium',
+            color: 'Sapphire Sky',
+            posX: activeCenterX + (Math.random() * 80 - 40),
+            posY: activeCenterY + (Math.random() * 80 - 40),
+            pinned: false,
+            attachedAudio: reader.result,
+            attachedAudioName: file.name,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+
+          const nextTasks = [...tasks, newTask];
+          await saveTasks(nextTasks);
+
+          if (user) {
+            const taskPath = `users/${user.uid}/tasks`;
+            try {
+              await setDoc(doc(db, taskPath, nextId), newTask);
+            } catch (err) {
+              handleFirestoreError(err, OperationType.CREATE, taskPath);
+            }
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   // 5. Tasks Creation / Updates / Deletions Controls
   const addNewTask = async (prio: 'low' | 'medium' | 'high' = 'medium') => {
     const nextId = 'task_' + Math.floor(Math.random() * 10000000);
@@ -561,7 +654,7 @@ export default function App() {
       </div>
 
       {/* AMBIENT BACKGROUND WATERMARK */}
-      <div className="absolute bottom-20 right-12 text-right pointer-events-none select-none z-0 opacity-[0.03] dark:opacity-[0.07]">
+      <div className="absolute top-28 right-12 text-right pointer-events-none select-none z-0 opacity-[0.03] dark:opacity-[0.07]">
         <h1 className="text-[36px] md:text-[48px] font-serif italic text-zinc-900 dark:text-white leading-none tracking-tight uppercase whitespace-nowrap">
           Долги Жмут
         </h1>
@@ -596,7 +689,7 @@ export default function App() {
             }`}
           >
             <Compass className="w-3.5 h-3.5 font-bold" />
-            <span className="hidden sm:inline">Playground Workspace</span>
+            <span className="hidden sm:inline">Доска Сжатия</span>
           </button>
           
           <button
@@ -608,7 +701,7 @@ export default function App() {
             }`}
           >
             <LayoutGrid className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Overview Matrix</span>
+            <span className="hidden sm:inline">Матрица Обзора</span>
           </button>
         </div>
 
@@ -617,9 +710,9 @@ export default function App() {
           
           {/* Cloud encrypted live display */}
           <div className="hidden lg:flex flex-col items-end text-right justify-center">
-            <span className="text-[8px] uppercase tracking-[0.15em] opacity-40 leading-none">Security Sphere</span>
+            <span className="text-[8px] uppercase tracking-[0.15em] opacity-40 leading-none">Режим Безопасности</span>
             <span className={`text-[10px] font-mono mt-0.5 leading-none font-bold ${user ? 'text-[#00FF94]' : 'text-amber-500'}`}>
-              ● {user ? 'VERIFIED / ENCRYPT' : 'LOCAL SANDBOX'}
+              ● {user ? 'ОБЛАЧНЫЙ СИНХРОН' : 'ЛОКАЛЬНЫЙ РЕЖИМ'}
             </span>
           </div>
 
@@ -630,7 +723,7 @@ export default function App() {
             <button
               onClick={() => setShowHelp(true)}
               className="p-1.5 rounded-lg hover:bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 transition-colors"
-              title="Interactive User Guide"
+              title="Перейти к руководству"
             >
               <HelpCircle className="w-4 h-4" />
             </button>
@@ -638,7 +731,7 @@ export default function App() {
             <button
               onClick={() => saveThemeSettings(theme === 'dark' ? 'light' : 'dark')}
               className="p-1.5 rounded-lg hover:bg-zinc-500/10 text-zinc-500 dark:text-zinc-400 transition-colors"
-              title="Theme Swap"
+              title="Сменить Тему"
             >
               <Zap className={`w-4 h-4 ${theme === 'dark' ? 'text-zinc-400' : 'text-amber-500 fill-amber-500/15'}`} />
             </button>
@@ -652,7 +745,7 @@ export default function App() {
               <div className="w-8 h-8 rounded-full border border-zinc-900/10 dark:border-white/20 overflow-hidden shadow-sm bg-gradient-to-tr from-zinc-700 to-zinc-500">
                 <img
                   src={user.photoURL || undefined}
-                  alt={user.displayName || 'Account'}
+                  alt={user.displayName || 'Аккаунт'}
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"
                 />
@@ -660,7 +753,7 @@ export default function App() {
               <button
                 onClick={handleSignOut}
                 className="p-1.5 rounded-lg hover:bg-red-950/20 text-red-500 hover:text-red-400 transition-colors"
-                title="Disconnect Account"
+                title="Режим Выхода"
               >
                 <LogOut className="w-4 h-4" />
               </button>
@@ -671,7 +764,7 @@ export default function App() {
               className="px-3.5 py-1.5 bg-[#4D4DFF] hover:bg-[#2200FF] active:scale-95 transition-all text-[9px] uppercase tracking-widest font-black rounded-lg text-white flex items-center gap-1 shadow-xl shadow-indigo-500/15"
             >
               <LogIn className="w-3.5 h-3.5" />
-              <span>Connect</span>
+              <span>Войти</span>
             </button>
           )}
 
@@ -688,7 +781,7 @@ export default function App() {
             className="fixed bottom-6 left-6 z-40 p-4 rounded-xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-[#0A0A0A]/85 backdrop-blur-xl shadow-2xl flex items-center gap-3 w-fit"
           >
             <div className="flex flex-col gap-1 text-[9px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-widest font-mono">
-              <span>CAMERA</span>
+              <span>КАМЕРА</span>
               <span className="text-zinc-950 dark:text-white font-mono text-xs font-semibold leading-none">
                 {Math.round(zoom * 100)}%
               </span>
@@ -710,7 +803,7 @@ export default function App() {
               <button
                 onClick={resetBoardViewport}
                 className="p-1.5 rounded-md hover:bg-zinc-500/10 text-zinc-400 dark:text-zinc-500 transition-colors"
-                title="Reset Position"
+                title="Сбросить Камеру"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
               </button>
@@ -719,14 +812,14 @@ export default function App() {
                 className={`p-1.5 rounded-md transition-colors ${
                   showGrid ? 'text-[#4D4DFF] bg-[#4D4DFF]/10' : 'text-zinc-400 dark:text-zinc-500 hover:bg-zinc-500/10'
                 }`}
-                title="Toggle Reference Grid"
+                title="Включить/Выключить Сетку"
               >
                 <Grid className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={shakeBoard}
                 className="p-1.5 rounded-md hover:bg-zinc-500/10 text-zinc-400 dark:text-zinc-500 transition-all hover:rotate-12"
-                title="Trigger 2D Physics Motion Mixer"
+                title="Встряхнуть Доску (Физика)"
               >
                 <Database className="w-3.5 h-3.5" />
               </button>
@@ -738,122 +831,133 @@ export default function App() {
       {/* DRAWING BOARD PENCIL & BRUSH TOOL SETTINGS (BOTTOM CENTER TOOLBAR) */}
       <AnimatePresence>
         {currentView === 'workspace' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 25 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 p-2.5 rounded-xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-[#0A0A0A]/85 backdrop-blur-xl shadow-2xl flex items-center gap-2"
-          >
-            {/* Sketch tool switches */}
-            <button
-              onClick={() => setActiveTool('none')}
-              className={`p-2 rounded-lg transition-all ${
-                activeTool === 'none'
-                  ? 'bg-zinc-950 text-white dark:bg-[#4D4DFF] dark:text-white shadow-md shadow-indigo-500/10'
-                  : 'hover:bg-zinc-500/10 text-zinc-400 dark:text-zinc-500'
-              }`}
-              title="Pointer Selector Mode"
-            >
-              <MousePointer className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={() => setActiveTool('draw')}
-              className={`p-2 rounded-lg transition-all ${
-                activeTool === 'draw'
-                  ? 'bg-zinc-950 text-white dark:bg-[#4D4DFF] dark:text-white shadow-md shadow-indigo-500/10'
-                  : 'hover:bg-zinc-500/10 text-zinc-400 dark:text-zinc-500'
-              }`}
-              title="Architectural Brush Tool"
-            >
-              <Brush className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={() => setActiveTool('erase')}
-              className={`p-2 rounded-lg transition-all ${
-                activeTool === 'erase'
-                  ? 'bg-zinc-950 text-white dark:bg-[#4D4DFF] dark:text-white shadow-md shadow-indigo-500/10'
-                  : 'hover:bg-zinc-500/10 text-zinc-400 dark:text-zinc-500'
-              }`}
-              title="Quantum Eraser"
-            >
-              <Eraser className="w-4 h-4" />
-            </button>
-
-            {activeTool === 'draw' && (
-              <>
-                <span className="w-px h-5 bg-zinc-200 dark:bg-zinc-800 mx-1" />
-                {/* Sketch layout palette selectors */}
-                <div className="flex gap-1 items-center animate-fade-in">
-                  {['#4D4DFF', '#FF3D00', '#00FF94', '#00D1FF', '#FFB800', '#A814FF'].map(hex => (
-                    <button
-                      key={hex}
-                      onClick={() => setStrokeColor(hex)}
-                      style={{ backgroundColor: hex }}
-                      className={`w-4 h-4 rounded-full transition-transform hover:scale-125 focus:outline-none ${
-                        strokeColor === hex ? 'ring-2 ring-zinc-950 dark:ring-white scale-110' : ''
-                      }`}
-                    />
-                  ))}
-                </div>
-
-                <span className="w-px h-5 bg-zinc-200 dark:bg-zinc-800 mx-1" />
-
-                {/* Brush Style Selector (Solid, Glowing Neon, Dashed, Dotted) */}
-                <div className="flex gap-1 items-center p-0.5 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg">
-                  {([
-                    { id: 'solid', label: 'Solid', dotClass: 'w-1.5 h-1.5 rounded-full bg-current' },
-                    { id: 'neon', label: 'Neon', dotClass: 'w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_6px_rgba(99,102,241,0.9)]' },
-                    { id: 'dashed', label: 'Dash', dotClass: 'w-3 h-0.5 border-t border-dashed border-current' },
-                    { id: 'dotted', label: 'Dot', dotClass: 'w-3 h-0.5 border-t border-dotted border-current' }
-                  ] as const).map(style => (
-                    <button
-                      key={style.id}
-                      onClick={() => setBrushStyle(style.id)}
-                      className={`px-1.5 py-0.5 rounded text-[8px] font-mono tracking-wider font-bold uppercase transition-all flex items-center gap-1 ${
-                        brushStyle === style.id
-                          ? 'bg-zinc-900 text-white dark:bg-[#4D4DFF] dark:text-white shadow-sm'
-                          : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-500/10'
-                      }`}
-                      title={`${style.label} Brush`}
-                    >
-                      <span className={style.dotClass} />
-                      <span className="leading-none">{style.label}</span>
-                    </button>
-                  ))}
-                </div>
-
-                <span className="w-px h-5 bg-zinc-200 dark:bg-zinc-800 mx-1" />
-
-                {/* Range values */}
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-mono opacity-50">{strokeWidth}px</span>
-                  <input
-                    type="range"
-                    min="2"
-                    max="14"
-                    value={strokeWidth}
-                    onChange={(e) => setStrokeWidth(Number(e.target.value))}
-                    className="w-16 h-1 bg-zinc-300 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer outline-none Accent-[#4D4DFF]"
-                    title="Line Weight"
-                  />
-                </div>
-              </>
-            )}
-
-            {strokes.length > 0 && (
-              <>
-                <span className="w-px h-5 bg-zinc-200 dark:bg-zinc-800 mx-1" />
-                <button
-                  onClick={clearDrawings}
-                  className="px-2.5 py-1 text-[8px] font-mono hover:bg-red-500/10 border border-red-500/20 text-red-500 dark:text-red-400 hover:text-red-300 rounded-md font-bold transition-all uppercase tracking-wider"
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-2.5 pointer-events-none">
+            
+            {/* Popover bar for brush settings (floats elegantly above the main switches) */}
+            <AnimatePresence>
+              {activeTool === 'draw' && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  className="p-2 px-3 rounded-xl border border-black/10 dark:border-white/10 bg-white/90 dark:bg-[#0A0A0A]/90 backdrop-blur-xl shadow-xl flex items-center gap-3 w-fit pointer-events-auto"
                 >
-                  Reset Sketch
-                </button>
-              </>
-            )}
-          </motion.div>
+                  {/* Color dots */}
+                  <div className="flex gap-1.5 items-center">
+                    {['#4D4DFF', '#FF3D00', '#00FF94', '#00D1FF', '#FFB800', '#A814FF'].map(hex => (
+                      <button
+                        key={hex}
+                        onClick={() => setStrokeColor(hex)}
+                        style={{ backgroundColor: hex }}
+                        className={`w-3.5 h-3.5 rounded-full transition-transform hover:scale-125 focus:outline-none ${
+                          strokeColor === hex ? 'ring-2 ring-zinc-950 dark:ring-white scale-110' : ''
+                        }`}
+                        title="Цвет линии"
+                      />
+                    ))}
+                  </div>
+
+                  <span className="w-px h-4 bg-zinc-200 dark:bg-zinc-800" />
+
+                  {/* Brush Styles */}
+                  <div className="flex gap-1 items-center p-0.5 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg">
+                    {([
+                      { id: 'solid', label: 'Линия', dotClass: 'w-1.5 h-1.5 rounded-full bg-current' },
+                      { id: 'neon', label: 'Неон', dotClass: 'w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_6px_rgba(99,102,241,0.9)]' },
+                      { id: 'dashed', label: 'Штрих', dotClass: 'w-3 h-0.5 border-t border-dashed border-current' },
+                      { id: 'dotted', label: 'Точки', dotClass: 'w-3 h-0.5 border-t border-dotted border-current' }
+                    ] as const).map(style => (
+                      <button
+                        key={style.id}
+                        onClick={() => setBrushStyle(style.id)}
+                        className={`px-1.5 py-0.5 rounded text-[8px] font-mono tracking-wider font-bold uppercase transition-all flex items-center gap-1 ${
+                          brushStyle === style.id
+                            ? 'bg-zinc-900 text-white dark:bg-[#4D4DFF] dark:text-white shadow-sm'
+                            : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-500/10'
+                        }`}
+                        title={`Стиль кисти: ${style.label}`}
+                      >
+                        <span className={style.dotClass} />
+                        <span className="leading-none">{style.label}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <span className="w-px h-4 bg-zinc-200 dark:bg-zinc-800" />
+
+                  {/* Width slider */}
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-mono opacity-50 text-zinc-800 dark:text-zinc-300">{strokeWidth}px</span>
+                    <input
+                      type="range"
+                      min="2"
+                      max="14"
+                      value={strokeWidth}
+                      onChange={(e) => setStrokeWidth(Number(e.target.value))}
+                      className="w-14 h-1 bg-zinc-300 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer outline-none Accent-[#4D4DFF]"
+                      title="Толщина Линии"
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Main switcher mode bar */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 25 }}
+              className="p-2 rounded-xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-[#0A0A0A]/85 backdrop-blur-xl shadow-2xl flex items-center gap-2 pointer-events-auto"
+            >
+              <button
+                onClick={() => setActiveTool('none')}
+                className={`p-2 rounded-lg transition-all ${
+                  activeTool === 'none'
+                    ? 'bg-zinc-950 text-white dark:bg-[#4D4DFF] dark:text-white shadow-md'
+                    : 'hover:bg-zinc-500/10 text-zinc-400 dark:text-zinc-500'
+                }`}
+                title="Режим Курсора / Выбора"
+              >
+                <MousePointer className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={() => setActiveTool('draw')}
+                className={`p-2 rounded-lg transition-all ${
+                  activeTool === 'draw'
+                    ? 'bg-zinc-950 text-white dark:bg-[#4D4DFF] dark:text-white shadow-md'
+                    : 'hover:bg-zinc-500/10 text-zinc-400 dark:text-zinc-500'
+                }`}
+                title="Кисть Рисования"
+              >
+                <Brush className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={() => setActiveTool('erase')}
+                className={`p-2 rounded-lg transition-all ${
+                  activeTool === 'erase'
+                    ? 'bg-zinc-950 text-white dark:bg-[#4D4DFF] dark:text-white shadow-md'
+                    : 'hover:bg-zinc-500/10 text-zinc-400 dark:text-zinc-500'
+                }`}
+                title="Ластик"
+              >
+                <Eraser className="w-4 h-4" />
+              </button>
+
+              {strokes.length > 0 && (
+                <>
+                  <span className="w-px h-5 bg-zinc-200 dark:bg-zinc-800 mx-1" />
+                  <button
+                    onClick={clearDrawings}
+                    className="px-2.5 py-1 text-[8px] font-mono hover:bg-red-500/10 border border-red-500/20 text-red-500 dark:text-red-400 hover:text-red-300 rounded-md font-bold transition-all uppercase tracking-wider"
+                  >
+                    Очистить Набросок
+                  </button>
+                </>
+              )}
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
@@ -868,10 +972,45 @@ export default function App() {
           >
             <button
               onClick={() => addNewTask('high')}
-              className="text-[9px] font-mono uppercase tracking-[0.25em] text-[#FF3D00] hover:text-[#ff5522] hover:scale-105 active:scale-95 transition-all"
+              className="text-[9px] font-mono uppercase tracking-[0.25em] text-[#FF3D00] hover:text-[#ff5522] hover:scale-105 active:scale-95 transition-all mb-1"
             >
-              ✦ Spawn high priority node
+              ✦ Создать срочный долг (макс)
             </button>
+
+            {/* Horizontal photocard & music card creators */}
+            <div className="flex gap-2.5 items-center mr-2">
+              <button
+                onClick={() => directPhotoInputRef.current?.click()}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-850 bg-white/75 dark:bg-zinc-950/80 hover:bg-[#4D4DFF]/10 text-zinc-700 dark:text-zinc-300 hover:text-[#4D4DFF] dark:hover:text-[#a855f7] transition-all text-[10px] font-medium shadow-md cursor-pointer pointer-events-auto active:scale-95"
+                title="Добавить отдельную фотокарточку на полотно"
+              >
+                <Image className="w-3.5 h-3.5" />
+                <span>Добавить фото</span>
+              </button>
+              <input
+                type="file"
+                ref={directPhotoInputRef}
+                onChange={handleDirectPhotoUpload}
+                accept="image/*"
+                className="hidden"
+              />
+
+              <button
+                onClick={() => directAudioInputRef.current?.click()}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-850 bg-white/75 dark:bg-zinc-950/80 hover:bg-pink-500/10 text-zinc-700 dark:text-zinc-300 hover:text-pink-500 transition-all text-[10px] font-medium shadow-md cursor-pointer pointer-events-auto active:scale-95"
+                title="Добавить отдельный музыкальный плеер на полотно"
+              >
+                <Music className="w-3.5 h-3.5" />
+                <span>Добавить музыку</span>
+              </button>
+              <input
+                type="file"
+                ref={directAudioInputRef}
+                onChange={handleDirectAudioUpload}
+                accept="audio/*"
+                className="hidden pointer-events-auto"
+              />
+            </div>
             
             {/* Editorial "Draft Task" button matching original HTML mockup perfectly */}
             <button
@@ -879,9 +1018,9 @@ export default function App() {
               className="group relative flex flex-col items-end gap-1.5 focus:outline-none text-right"
             >
               <div className="absolute -inset-4 bg-[#4D4DFF] opacity-0 group-hover:opacity-10 rounded-full blur-xl transition-all duration-500"></div>
-              <span className="text-[10px] uppercase tracking-[0.3em] text-[#4D4DFF] font-semibold">New Entry</span>
+              <span className="text-[10px] uppercase tracking-[0.3em] text-[#4D4DFF] font-semibold">Новое соображение</span>
               <span className="text-3xl md:text-4xl font-serif italic text-zinc-950 dark:text-zinc-50 border-b border-zinc-900/10 dark:border-white/10 pb-1.5 pr-2 group-hover:pr-5 transition-all duration-300">
-                Draft Task
+                Записать Долг
               </span>
             </button>
           </motion.div>
@@ -926,6 +1065,7 @@ export default function App() {
             strokeColor={strokeColor}
             strokeWidth={strokeWidth}
             brushStyle={brushStyle}
+            draggingLinkSourceId={draggingLinkSourceId}
           />
 
           {/* PHYSICAL SVG ROPE JOINT LINKS CONNECTING CARD SHEETS */}
@@ -952,10 +1092,15 @@ export default function App() {
                 const posB = positions[rope.nodeBId];
                 if (!posA || !posB) return;
 
-                // Source cards are 300px wide. Anchor ropes from right edge of A to left edge of B
-                const sX = posA.x + 150;
+                const taskA = tasks.find(t => t.id === rope.nodeAId);
+                const taskB = tasks.find(t => t.id === rope.nodeBId);
+                const widthA = taskA?.width || 300;
+                const widthB = taskB?.width || 300;
+
+                // Source cards are centered at posA/posB. Anchor ropes from right edge of A to left edge of B
+                const sX = posA.x + (widthA / 2);
                 const sY = posA.y;
-                const eX = posB.x - 150;
+                const eX = posB.x - (widthB / 2);
                 const eY = posB.y;
 
                 const midX = (sX + eX) / 2;
@@ -971,6 +1116,13 @@ export default function App() {
 
                 const pathD = `M ${sX} ${sY} Q ${ctrlX} ${ctrlY} ${eX} ${eY}`;
 
+                const elapsed = rope.createdAt ? Date.now() - rope.createdAt : 999999;
+                const animDuration = 1000; // 1 second drawing animation
+                const isAnimating = elapsed < animDuration;
+                
+                const dashArray = isAnimating ? `${dist}` : undefined;
+                const dashOffset = isAnimating ? `${dist * (1 - elapsed / animDuration)}` : undefined;
+
                 paths.push(
                   <g key={rope.id}>
                     {/* Shadow Layer */}
@@ -979,6 +1131,8 @@ export default function App() {
                       stroke="rgba(0, 0, 0, 0.35)"
                       strokeWidth="5"
                       strokeLinecap="round"
+                      strokeDasharray={dashArray}
+                      strokeDashoffset={dashOffset}
                     />
                     {/* Glow Line */}
                     <path
@@ -987,6 +1141,8 @@ export default function App() {
                       strokeWidth="3.2"
                       strokeLinecap="round"
                       className="animate-pulse"
+                      strokeDasharray={dashArray}
+                      strokeDashoffset={dashOffset}
                     />
                     {/* Core Line */}
                     <path
@@ -994,7 +1150,21 @@ export default function App() {
                       stroke="rgba(255, 255, 255, 0.6)"
                       strokeWidth="1"
                       strokeLinecap="round"
+                      strokeDasharray={dashArray}
+                      strokeDashoffset={dashOffset}
                     />
+                    {/* Spark Signal Shooting across newly connected rope */}
+                    {isAnimating && (
+                      <path
+                        d={pathD}
+                        stroke="#ffffff"
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        strokeDasharray="40 1000"
+                        strokeDashoffset={`${dist - (elapsed / animDuration) * dist}`}
+                        style={{ filter: 'drop-shadow(0 0 5px #818cf8)' }}
+                      />
+                    )}
                   </g>
                 );
               });
@@ -1004,7 +1174,9 @@ export default function App() {
                 const posStart = positions[draggingLinkSourceId];
                 const posEnd = draggingLinkCurrentPos;
                 if (posStart) {
-                  const sX = posStart.x + 150;
+                  const taskStart = tasks.find(t => t.id === draggingLinkSourceId);
+                  const widthStart = taskStart?.width || 300;
+                  const sX = posStart.x + (widthStart / 2);
                   const sY = posStart.y;
                   const eX = posEnd.x;
                   const eY = posEnd.y;
@@ -1076,6 +1248,9 @@ export default function App() {
                     isLinkingSource={linkingSourceId === task.id || draggingLinkSourceId === task.id}
                     isLinkingTarget={(linkingSourceId !== null && linkingSourceId !== task.id) || (draggingLinkSourceId !== null && draggingLinkSourceId !== task.id)}
                     theme={theme}
+                    zoom={zoom}
+                    hoveredTaskId={hoveredTaskId}
+                    onHoverTask={setHoveredTaskId}
                   />
                 ))}
               </AnimatePresence>
@@ -1089,9 +1264,9 @@ export default function App() {
                 <Compass className="w-6 h-6 animate-spin-slow" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-zinc-100">Board Playground is Empty</h3>
-                <p className="text-xs text-zinc-400 mt-1">
-                  Click the white button below. Task sheets float in zero-gravity with live colliding bounding physics! Draw lines to connect them.
+                <h3 className="text-sm font-bold text-zinc-100">Доска Сжатия Долгов Пуста</h3>
+                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                  Нажмите на кнопку «Записать Долг» или «Создать срочный долг» внизу справа. Листы долгов парят в невесомости с физикой упругих столкновений! Нажмите на кружок у правого края карты и потяните нить, чтобы связать их.
                 </p>
               </div>
             </div>
@@ -1116,7 +1291,7 @@ export default function App() {
                 {/* Visual Card total ratio */}
                 <div className="p-5 rounded-2xl border border-white/5 dark:border-zinc-800/80 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-lg flex items-center justify-between shadow-lg shadow-black/5">
                   <div>
-                    <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">Completing ratio</span>
+                    <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">Отношение Сжатых</span>
                     <span className="text-2xl font-black mt-1 block">
                       {tasks.filter(t => t.status === 'completed').length} / {tasks.length}
                     </span>
@@ -1129,7 +1304,7 @@ export default function App() {
                 {/* Highly critical nodes priority */}
                 <div className="p-5 rounded-2xl border border-white/5 dark:border-zinc-800/80 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-lg flex items-center justify-between shadow-lg shadow-black/5">
                   <div>
-                    <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">Urgent Action Nodes</span>
+                    <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">Критические карточки</span>
                     <span className="text-2xl font-black mt-1 text-rose-500 block">
                       {tasks.filter(t => t.priority === 'high' && t.status === 'pending').length}
                     </span>
@@ -1142,9 +1317,9 @@ export default function App() {
                 {/* Connected joints threads */}
                 <div className="p-5 rounded-2xl border border-white/5 dark:border-zinc-800/80 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-lg flex items-center justify-between shadow-lg shadow-black/5">
                   <div>
-                    <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">Active Rope Joints</span>
+                    <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">Упругие сочленения</span>
                     <span className="text-2xl font-black mt-1 block">
-                      {ropes.length} Interconnected
+                      {ropes.length} Нитей
                     </span>
                   </div>
                   <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 animate-pulse">
@@ -1161,7 +1336,7 @@ export default function App() {
                 <div className="p-6 rounded-2xl border border-white/5 dark:border-zinc-800/60 bg-white/60 dark:bg-zinc-950/60 backdrop-blur-md flex flex-col gap-4">
                   <div className="flex items-center justify-between border-b dark:border-zinc-800 pb-3">
                     <h3 className="font-bold flex items-center gap-1.5 text-sm uppercase tracking-wider text-zinc-500">
-                      <span>In Progress Nodes</span>
+                      <span>Карточки в Работе</span>
                       <span className="px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 text-[10px]">
                         {tasks.filter(t => t.status === 'pending').length}
                       </span>
@@ -1175,22 +1350,22 @@ export default function App() {
                         className="p-3.5 rounded-xl border border-white/10 dark:border-zinc-800/80 bg-white/40 dark:bg-zinc-900/40 hover:bg-zinc-500/5 transition-colors flex items-center justify-between gap-3"
                       >
                         <div>
-                          <p className="text-xs font-bold tracking-tight text-zinc-900 dark:text-zinc-100">{task.title || 'Untitled Node'}</p>
-                          <p className="text-[10px] text-zinc-500 mt-0.5 max-w-[320px] truncate">{task.description || 'No description provided'}</p>
+                          <p className="text-xs font-bold tracking-tight text-zinc-900 dark:text-zinc-100">{task.title || 'Новая заметка'}</p>
+                          <p className="text-[10px] text-zinc-500 mt-0.5 max-w-[320px] truncate">{task.description || 'Нет описания'}</p>
                         </div>
                         <button
                           onClick={() => {
                             const nt = { ...task, status: 'completed' as const };
                             handleTaskUpdate(nt);
                           }}
-                          className="p-1 px-1.5 rounded-lg border border-zinc-500/30 text-[10px] hover:bg-zinc-800 text-inherit/80"
+                          className="p-1 px-1.5 rounded-lg border border-zinc-500/30 text-[10px] hover:bg-zinc-850 text-inherit/85"
                         >
-                          Complete
+                          Сжать
                         </button>
                       </div>
                     ))}
                     {tasks.filter(t => t.status === 'pending').length === 0 && (
-                      <p className="text-xs text-zinc-400 text-center py-6">All tasks completed! Relax and sketches on the Board.</p>
+                      <p className="text-xs text-zinc-400 text-center py-6">Все долги успешно возвращены и сжаты! Можно рисовать на холсте.</p>
                     )}
                   </div>
                 </div>
@@ -1199,7 +1374,7 @@ export default function App() {
                 <div className="p-6 rounded-2xl border border-white/5 dark:border-zinc-800/60 bg-white/60 dark:bg-zinc-950/60 backdrop-blur-md flex flex-col gap-4">
                   <div className="flex items-center justify-between border-b dark:border-zinc-800 pb-3">
                     <h3 className="font-bold flex items-center gap-1.5 text-sm uppercase tracking-wider text-zinc-500">
-                      <span>Completed Archive</span>
+                      <span>Архив Сжатых Долгов</span>
                       <span className="px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px]">
                         {tasks.filter(t => t.status === 'completed').length}
                       </span>
@@ -1221,14 +1396,14 @@ export default function App() {
                             const nt = { ...task, status: 'pending' as const };
                             handleTaskUpdate(nt);
                           }}
-                          className="p-1 px-1.5 rounded-lg border border-zinc-500/30 text-[10px] hover:bg-zinc-800 text-inherit/50"
+                          className="p-1 px-1.5 rounded-lg border border-zinc-500/30 text-[10px] hover:bg-zinc-850 text-inherit/60"
                         >
-                          Undo
+                          Вернуть
                         </button>
                       </div>
                     ))}
                     {tasks.filter(t => t.status === 'completed').length === 0 && (
-                      <p className="text-xs text-zinc-400 text-center py-6">No completed tasks yet. Finish high priorities floating cards!.</p>
+                      <p className="text-xs text-zinc-400 text-center py-6">Сжатых долгов пока нет. Нажмите галочку на парящей карточке!</p>
                     )}
                   </div>
                 </div>
@@ -1320,42 +1495,42 @@ export default function App() {
               <button
                 onClick={() => setShowHelp(false)}
                 className="absolute top-4 right-4 p-1 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-lg transition-colors"
-                title="Exit Guide"
+                title="Закрыть Руководство"
               >
                 <X className="w-4 h-4" />
               </button>
 
               <div className="flex items-center gap-2 border-b border-zinc-800 pb-3">
                 <Sparkles className="w-5 h-5 text-indigo-400 animate-pulse" />
-                <h3 className="font-bold text-sm tracking-tight">Interactive Board Guide</h3>
+                <h3 className="font-bold text-sm tracking-tight">Руководство Сжимателя</h3>
               </div>
 
               <div className="flex flex-col gap-3">
                 <div>
-                  <h4 className="font-semibold text-zinc-300">🎮 Physical Float Interaction</h4>
+                  <h4 className="font-semibold text-zinc-300">🎮 Физическое Взаимодействие</h4>
                   <p className="text-zinc-400 mt-0.5 leading-relaxed">
-                    Task cards bounce and collide in zero-gravity. Drag their top header bar to throw notes with inertia. Click Pin (pin/unpin) to park a card statically.
+                    Карточки долгов парят и упруго сталкиваются в невесомости холста. Перетаскивайте их за верхнюю шапку, чтобы запустить с инерцией. Нажмите на иконку булавки (Pin), чтобы жестко зафиксировать карточку.
                   </p>
                 </div>
 
                 <div>
-                  <h4 className="font-semibold text-zinc-300">🔗 Elastic Rope Joints</h4>
+                  <h4 className="font-semibold text-zinc-300">🔗 Упругие Межкарточные Связи</h4>
                   <p className="text-zinc-400 mt-0.5 leading-relaxed">
-                    Connect task cards! Click the link icon on Task A, then click Task B to bind them with a glowing cyber rope constraint. They swing together!
+                    Соединяйте ваши карточки долгов! Нажмите на разъем у правого края Карточки А и перетащите нить на Карточку Б, чтобы связать их упругой светящейся неоновой связью. Они будут двигаться вместе!
                   </p>
                 </div>
 
                 <div>
-                  <h4 className="font-semibold text-zinc-300">🎨 Board Canvas Brush</h4>
+                  <h4 className="font-semibold text-zinc-300">🎨 Рисование на Холсте</h4>
                   <p className="text-zinc-400 mt-0.5 leading-relaxed">
-                    Select the brush tool at the bottom center to draw freehand flows directly onto the drawing canvas workspace. Switch back to pointer cursor to slide notes.
+                    Выберите инструмент кисти на нижней панели, чтобы нарисовать стрелки, диаграммы или схемы решения долговых связей прямо на холсте. Переключитесь назад на курсор, чтобы передвигать карточки.
                   </p>
                 </div>
 
                 <div>
-                  <h4 className="font-semibold text-zinc-300">☁️ Real-time Cloud Sync</h4>
-                  <p className="text-zinc-405 mt-0.5 leading-relaxed">
-                    Click Sign In (Google) to automatically sync your workspace across devices in real-time. Changes move physical objects remotely.
+                  <h4 className="font-semibold text-zinc-300">☁️ Мгновенная Облачная База</h4>
+                  <p className="text-zinc-400 mt-0.5 leading-relaxed">
+                    Войдите через Google, чтобы сохранить ваши наброски и сети связей в реальном времени. Изменения физики будут мгновенно транслироваться на все ваши подключенные устройства.
                   </p>
                 </div>
               </div>
@@ -1364,7 +1539,7 @@ export default function App() {
                 onClick={() => setShowHelp(false)}
                 className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 font-bold rounded-lg mt-2 text-white transition-all shadow-md shadow-indigo-500/10"
               >
-                Get Started
+                Запустить Сжиматель
               </button>
             </motion.div>
           </motion.div>

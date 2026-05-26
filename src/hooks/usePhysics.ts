@@ -28,7 +28,8 @@ export function usePhysics({ tasks, onTasksPositionUpdate, panX, panY, zoom }: U
     // Add new tasks or update pinned states
     tasks.forEach(task => {
       const hasMedia = task.attachedImage || task.attachedAudio || task.attachedLink;
-      const computedHeight = hasMedia ? 260 : 160;
+      const computedWidth = task.width || 300;
+      const computedHeight = task.height || (hasMedia ? 260 : 160);
 
       if (!currentNodes[task.id]) {
         currentNodes[task.id] = {
@@ -37,7 +38,7 @@ export function usePhysics({ tasks, onTasksPositionUpdate, panX, panY, zoom }: U
           y: task.posY || (window.innerHeight / 2) + (Math.random() * 100 - 50),
           vx: 0,
           vy: 0,
-          width: 300, 
+          width: computedWidth, 
           height: computedHeight,
           mass: hasMedia ? 1.4 : 1.0,
           pinned: task.pinned
@@ -45,16 +46,21 @@ export function usePhysics({ tasks, onTasksPositionUpdate, panX, panY, zoom }: U
       } else {
         // Keeps pinned status and sizes in sync
         currentNodes[task.id].pinned = task.pinned;
-        currentNodes[task.id].width = 300;
+        currentNodes[task.id].width = computedWidth;
         currentNodes[task.id].height = computedHeight;
         currentNodes[task.id].mass = hasMedia ? 1.4 : 1.0;
         // If task got updated in Firebase positions, snap if it's not the one we are dragging
         if (isDraggingIdRef.current !== task.id) {
           const node = currentNodes[task.id];
-          // Slow interpolation towards cloud position if they diverge too much
           const dx = task.posX - node.x;
           const dy = task.posY - node.y;
-          if (Math.abs(dx) > 100 || Math.abs(dy) > 100) {
+          // If the node is quiet (no ongoing physical push) or divergence is huge, align with the database coordinates
+          if (Math.abs(node.vx) < 0.1 && Math.abs(node.vy) < 0.1) {
+            if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+              node.x = task.posX;
+              node.y = task.posY;
+            }
+          } else if (Math.abs(dx) > 100 || Math.abs(dy) > 100) {
             node.x = task.posX;
             node.y = task.posY;
           }
@@ -142,7 +148,8 @@ export function usePhysics({ tasks, onTasksPositionUpdate, panX, panY, zoom }: U
         nodeAId: idA,
         nodeBId: idB,
         restLength: 320,
-        stiffness: 0.04
+        stiffness: 0.04,
+        createdAt: Date.now()
       });
     }
     setRopes([...ropesRef.current]);
@@ -184,6 +191,10 @@ export function usePhysics({ tasks, onTasksPositionUpdate, panX, panY, zoom }: U
         // Apply friction
         node.vx *= 0.90;
         node.vy *= 0.90;
+
+        // Add a sleep resting threshold to prevent endless sliding micro-drift
+        if (Math.abs(node.vx) < 0.08) node.vx = 0;
+        if (Math.abs(node.vy) < 0.08) node.vy = 0;
 
         // Apply velocities
         if (!node.pinned) {

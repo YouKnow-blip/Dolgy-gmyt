@@ -11,6 +11,7 @@ interface DrawingCanvasProps {
   strokeColor: string;
   strokeWidth: number;
   brushStyle: 'solid' | 'neon' | 'dashed' | 'dotted';
+  draggingLinkSourceId: string | null;
 }
 
 export default function DrawingCanvas({
@@ -23,6 +24,7 @@ export default function DrawingCanvas({
   strokeColor,
   strokeWidth,
   brushStyle,
+  draggingLinkSourceId,
 }: DrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDrawingRef = useRef(false);
@@ -218,7 +220,7 @@ export default function DrawingCanvas({
       className="absolute inset-0 block select-none"
       style={{
         cursor: cursorStyle(),
-        pointerEvents: activeTool !== 'none' ? 'auto' : 'none',
+        pointerEvents: (activeTool !== 'none' && !draggingLinkSourceId) ? 'auto' : 'none',
         zIndex: 5, // Drawings directly behind task sheets but interactable on canvas selection modes
       }}
     />
