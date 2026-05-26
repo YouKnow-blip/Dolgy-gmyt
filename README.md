@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./public/banner.png" width="100%" />
+  <img src="./public/4e790882-16e8-4baa-a3a6-47fd220c8855.png="100%" />
 </p>
 
 # Долги Жмут
