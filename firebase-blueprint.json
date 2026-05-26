@@ -1,0 +1,145 @@
+{
+  "entities": {
+    "task": {
+      "title": "Task",
+      "description": "A task card floating on the interactive physics drawing board.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique task identifier"
+        },
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user who owns this task"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the task"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the task"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "completed"],
+          "description": "Current status of the task"
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "description": "Priority level of the task"
+        },
+        "color": {
+          "type": "string",
+          "description": "Visual theme preset or color code of the task card"
+        },
+        "posX": {
+          "type": "number",
+          "description": "Current X coordinate on the physical board simulation"
+        },
+        "posY": {
+          "type": "number",
+          "description": "Current Y coordinate on the physical board simulation"
+        },
+        "pinned": {
+          "type": "boolean",
+          "description": "If true, the card is stationary and ignores physics forces"
+        },
+        "reminderTime": {
+          "type": "string",
+          "description": "ISO timestamp for task reminder notification"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last modification timestamp"
+        }
+      },
+      "required": ["id", "userId", "title", "status", "priority", "posX", "posY", "pinned", "createdAt", "updatedAt"]
+    },
+    "boardDrawing": {
+      "title": "BoardDrawing",
+      "description": "Serialized free-form vector drawings layered on the workspace board.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the drawing layer (often matches userId or boardId)"
+        },
+        "userId": {
+          "type": "string",
+          "description": "The UID of the user who owns this drawing layer"
+        },
+        "strokesData": {
+          "type": "string",
+          "description": "Compressed or serialized JSON string representing draw strokes"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when drawing was last changed"
+        }
+      },
+      "required": ["id", "userId", "strokesData", "updatedAt"]
+    },
+    "boardSettings": {
+      "title": "BoardSettings",
+      "description": "User preferences for the overall board workspace.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID matches the userId"
+        },
+        "userId": {
+          "type": "string",
+          "description": "User ID owning these settings"
+        },
+        "theme": {
+          "type": "string",
+          "enum": ["dark", "light"],
+          "description": "Aesthetic style theme"
+        },
+        "showGrid": {
+          "type": "boolean",
+          "description": "Whether to overlay a subtle grid alignment system"
+        },
+        "panX": {
+          "type": "number",
+          "description": "Board horizontal scroll/pan value"
+        },
+        "panY": {
+          "type": "number",
+          "description": "Board vertical scroll/pan value"
+        },
+        "zoom": {
+          "type": "number",
+          "description": "Board zoom ratio"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last modification timestamp"
+        }
+      },
+      "required": ["id", "userId", "theme", "showGrid", "panX", "panY", "zoom", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}/tasks/{taskId}": {
+      "schema": "task",
+      "description": "Subcollection of floating tasks created by a specific user."
+    },
+    "users/{userId}/drawings/{drawingId}": {
+      "schema": "boardDrawing",
+      "description": "Subcollection for drawing canvas layers owned by the user."
+    },
+    "users/{userId}/settings/{settingsId}": {
+      "schema": "boardSettings",
+      "description": "Subcollection for storing user's board layout preferences."
+    }
+  }
+}
